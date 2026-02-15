@@ -48,6 +48,15 @@ st.markdown("""
         margin: 5px 0;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
+    .water-container {
+        background: linear-gradient(135deg, #4ECDC4 0%, #00B4D8 100%);
+        padding: 20px;
+        border-radius: 10px;
+        color: white;
+        margin: 10px 0;
+        box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
+        text-align: center;
+    }
     .workout-container {
         background: linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%);
         padding: 15px;
@@ -114,6 +123,27 @@ st.markdown("""
         margin: 5px 0;
         border-left: 4px solid #FF6B6B;
     }
+    .water-item {
+        background: linear-gradient(135deg, #E0F7FF 0%, #B8E6FF 100%);
+        padding: 12px;
+        border-radius: 8px;
+        margin: 5px 0;
+        border-left: 4px solid #00B4D8;
+    }
+    .water-cup {
+        display: inline-block;
+        background: linear-gradient(135deg, #4ECDC4 0%, #00B4D8 100%);
+        padding: 10px 15px;
+        border-radius: 10px;
+        color: white;
+        font-weight: bold;
+        margin: 3px;
+        cursor: pointer;
+        transition: transform 0.2s;
+    }
+    .water-cup:hover {
+        transform: scale(1.1);
+    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -121,19 +151,19 @@ st.markdown("""
 NUTRITION_QUOTES = [
     "🥗 You are what you eat - make it count!",
     "💪 Fuel your body, fuel your dreams!",
-    "🌟 Every healthy meal is a victory!",
+    "💧 Stay hydrated, stay healthy!",
+    "🌟 Every healthy choice is a victory!",
     "🎯 Your body will thank you tomorrow!",
     "🔥 Progress over perfection!",
     "🌱 Small choices = Big changes!",
     "💚 Love your body, feed it well!",
-    "⭐ You've got this! One meal at a time!",
+    "⭐ You've got this! One sip at a time!",
     "🎪 Consistency builds health!",
     "🏆 Be the best version of yourself!",
     "✨ Nutrition is self-care!",
     "🚀 Your health is your wealth!",
-    "💎 Invest in yourself - eat well!",
+    "💎 Invest in yourself - drink water!",
     "🌈 Balance is key, not perfection!",
-    "👑 Own your nutrition journey!",
 ]
 
 COMMON_FOODS = {
@@ -212,17 +242,26 @@ WORKOUTS = {
     ],
 }
 
+WATER_SIZES = {
+    "Small Glass (200ml)": 200,
+    "Medium Glass (250ml)": 250,
+    "Large Glass (300ml)": 300,
+    "Water Bottle (500ml)": 500,
+    "Large Bottle (1L)": 1000,
+    "Custom": 0,
+}
+
 ACHIEVEMENTS = {
     "first_meal": {"name": "First Bite", "description": "Log your first meal", "emoji": "🍽️"},
     "five_meals": {"name": "Meal Logger", "description": "Log 5 meals", "emoji": "📝"},
     "first_workout": {"name": "Fitness Start", "description": "Log your first workout", "emoji": "💪"},
+    "first_water": {"name": "Hydration Hero", "description": "Log your first water intake", "emoji": "💧"},
+    "water_goal": {"name": "Aqua Master", "description": "Drink 2L+ water in one day", "emoji": "🌊"},
     "on_target": {"name": "Perfect Day", "description": "Stay within calorie goal", "emoji": "🎯"},
     "week_on_track": {"name": "Consistency", "description": "7 days on target", "emoji": "📅"},
     "macro_master": {"name": "Macro Master", "description": "Hit macros within 10%", "emoji": "🎪"},
     "high_protein": {"name": "Protein Powerhouse", "description": "100g+ protein in one day", "emoji": "🥚"},
     "workout_warrior": {"name": "Workout Warrior", "description": "Complete 5 workouts", "emoji": "🔥"},
-    "calorie_balance": {"name": "Balance Master", "description": "Achieve calorie deficit", "emoji": "⚖️"},
-    "weight_milestone": {"name": "Milestone Reached", "description": "Reach weight goal", "emoji": "🏆"},
 }
 
 RANK_SYSTEM = [
@@ -241,7 +280,6 @@ if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
 def save_data(filename="tracker.json"):
-    """Save data to JSON"""
     try:
         filepath = os.path.join(DATA_DIR, filename)
         with open(filepath, 'w') as f:
@@ -251,7 +289,6 @@ def save_data(filename="tracker.json"):
         return False
 
 def load_data(filename="tracker.json"):
-    """Load data from JSON"""
     try:
         filepath = os.path.join(DATA_DIR, filename)
         if os.path.exists(filepath):
@@ -278,33 +315,33 @@ if "user_data" not in st.session_state:
             "daily_protein_goal": 150,
             "daily_carbs_goal": 225,
             "daily_fat_goal": 65,
-            "target_weight": 77,  # kg
-            "current_weight": 82,  # kg
+            "daily_water_goal": 2000,
+            "target_weight": 77,
+            "current_weight": 82,
             "meals": {},
-            "workouts": {},  # date: [workout data]
+            "workouts": {},
+            "water_intake": {},
             "weight_log": {},
             "achievements": [],
             "last_saved": None,
             "total_meals_logged": 0,
             "total_workouts": 0,
+            "total_water_logged": 0,
             "best_streak": 0,
             "daily_bonus_claimed": False,
             "last_bonus_date": None,
         }
 
 def get_current_rank(rank_points):
-    """Get current rank"""
     for i in range(len(RANK_SYSTEM) - 1, -1, -1):
         if rank_points >= RANK_SYSTEM[i]["min_points"]:
             return RANK_SYSTEM[i]
     return RANK_SYSTEM[0]
 
 def get_today_key():
-    """Get today's date as key"""
     return datetime.now().strftime("%Y-%m-%d")
 
 def add_experience(exp_amount):
-    """Add experience"""
     user = st.session_state.user_data
     user["experience"] += exp_amount
     
@@ -322,7 +359,6 @@ def add_experience(exp_amount):
     return leveled_up
 
 def log_meal(meal_name, calories, protein, carbs, fat):
-    """Log a meal"""
     today = get_today_key()
     if today not in st.session_state.user_data["meals"]:
         st.session_state.user_data["meals"][today] = []
@@ -341,7 +377,6 @@ def log_meal(meal_name, calories, protein, carbs, fat):
     save_data()
 
 def log_workout(workout_name, calories_burned):
-    """Log a workout"""
     today = get_today_key()
     if today not in st.session_state.user_data["workouts"]:
         st.session_state.user_data["workouts"][today] = []
@@ -356,18 +391,37 @@ def log_workout(workout_name, calories_burned):
     add_experience(15)
     save_data()
 
+def log_water(water_ml):
+    today = get_today_key()
+    if today not in st.session_state.user_data["water_intake"]:
+        st.session_state.user_data["water_intake"][today] = []
+    
+    st.session_state.user_data["water_intake"][today].append({
+        "amount_ml": water_ml,
+        "time": datetime.now().strftime("%H:%M")
+    })
+    
+    st.session_state.user_data["total_water_logged"] += 1
+    add_experience(5)
+    save_data()
+
 def get_today_meals():
-    """Get today's meals"""
     today = get_today_key()
     return st.session_state.user_data["meals"].get(today, [])
 
 def get_today_workouts():
-    """Get today's workouts"""
     today = get_today_key()
     return st.session_state.user_data["workouts"].get(today, [])
 
+def get_today_water():
+    today = get_today_key()
+    return st.session_state.user_data["water_intake"].get(today, [])
+
+def get_today_water_total():
+    water_entries = get_today_water()
+    return sum(w["amount_ml"] for w in water_entries)
+
 def get_today_totals():
-    """Get today's totals"""
     meals = get_today_meals()
     totals = {"calories": 0, "protein": 0, "carbs": 0, "fat": 0}
     
@@ -380,19 +434,16 @@ def get_today_totals():
     return totals
 
 def get_today_burned():
-    """Get calories burned today"""
     workouts = get_today_workouts()
     burned = sum(w["calories_burned"] for w in workouts)
     return burned
 
 def get_net_calories():
-    """Get net calories (consumed - burned)"""
     today_totals = get_today_totals()
     today_burned = get_today_burned()
     return today_totals["calories"] - today_burned
 
 def get_meal_streak():
-    """Get meal streak"""
     today = datetime.now()
     streak = 0
     
@@ -413,7 +464,6 @@ def get_meal_streak():
     return streak
 
 def claim_daily_bonus():
-    """Claim daily bonus"""
     today = get_today_key()
     last_claimed = st.session_state.user_data.get("last_bonus_date")
     
@@ -457,7 +507,7 @@ else:
 
 st.sidebar.divider()
 
-page = st.sidebar.radio("Navigation", ["🏠 Home", "🍽️ Log Meal", "🏋️ Log Workout", "📊 Analytics", "⚖️ Weight", "🏆 Achievements", "⚙️ Settings"])
+page = st.sidebar.radio("Navigation", ["🏠 Home", "🍽️ Log Meal", "🏋️ Log Workout", "💧 Log Water", "📊 Analytics", "⚖️ Weight", "🏆 Achievements", "⚙️ Settings"])
 
 # Main Header
 col1, col2, col3 = st.columns([2, 2, 1])
@@ -483,11 +533,12 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
+    current_weight_display = float(st.session_state.user_data["current_weight"]) if isinstance(st.session_state.user_data["current_weight"], (int, float)) else 80.0
     st.markdown(f"""
     <div class='goal-container'>
         <h4>🎯 Daily Goal</h4>
         <p style='margin: 5px 0;'>{st.session_state.user_data['daily_calorie_goal']} cal</p>
-        <small>Weight: {st.session_state.user_data['current_weight']} kg</small>
+        <small>Weight: {current_weight_display} kg</small>
     </div>
     """, unsafe_allow_html=True)
 
@@ -504,11 +555,13 @@ st.markdown(f"""
 if page == "🏠 Home":
     today_meals = get_today_meals()
     today_workouts = get_today_workouts()
+    today_water = get_today_water()
+    today_water_total = get_today_water_total()
     today_totals = get_today_totals()
     today_burned = get_today_burned()
     net_calories = get_net_calories()
     
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     
     with col1:
         remaining = st.session_state.user_data["daily_calorie_goal"] - net_calories
@@ -522,10 +575,26 @@ if page == "🏠 Home":
         st.metric("🏋️ Workouts", len(today_workouts))
     
     with col4:
-        st.metric("📅 Streak", f"{get_meal_streak()} days")
+        st.metric("💧 Water", f"{today_water_total} ml")
     
     with col5:
+        st.metric("📅 Streak", f"{get_meal_streak()} days")
+    
+    with col6:
         st.metric("⭐ Total Logged", st.session_state.user_data["total_meals_logged"])
+    
+    st.divider()
+    
+    # Water intake section
+    water_percent = (today_water_total / st.session_state.user_data["daily_water_goal"]) * 100
+    st.markdown(f"""
+    <div class='water-container'>
+        <h2>💧 Water Intake</h2>
+        <h1>{today_water_total} ml / {st.session_state.user_data['daily_water_goal']} ml</h1>
+        <p>{water_percent:.0f}% of daily goal</p>
+    </div>
+    """, unsafe_allow_html=True)
+    st.progress(min(water_percent / 100, 1.0))
     
     st.divider()
     
@@ -633,6 +702,20 @@ if page == "🏠 Home":
             """, unsafe_allow_html=True)
     else:
         st.info("No workouts logged yet. Add a workout to burn calories!")
+    
+    st.divider()
+    
+    # Today's water intake
+    st.subheader("💧 Today's Water Intake")
+    if today_water:
+        for water in today_water:
+            st.markdown(f"""
+            <div class='water-item'>
+                <b>💧 {water['amount_ml']} ml</b> ({water['time']})
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No water logged yet. Start hydrating!")
 
 # PAGE: Log Meal
 elif page == "🍽️ Log Meal":
@@ -722,6 +805,84 @@ elif page == "🏋️ Log Workout":
             else:
                 st.error("Please enter a workout name")
 
+# PAGE: Log Water
+elif page == "💧 Log Water":
+    st.subheader("💧 Log Water Intake")
+    
+    today_water_total = get_today_water_total()
+    daily_goal = st.session_state.user_data["daily_water_goal"]
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        st.metric("Today's Water", f"{today_water_total} ml")
+    
+    with col2:
+        st.metric("Daily Goal", f"{daily_goal} ml")
+    
+    water_percent = (today_water_total / daily_goal) * 100
+    st.progress(min(water_percent / 100, 1.0), text=f"{water_percent:.0f}% of daily goal")
+    
+    st.divider()
+    
+    # Quick water logging buttons
+    st.subheader("💧 Quick Add Water")
+    
+    col1, col2, col3, col4, col5 = st.columns(5)
+    
+    buttons = [
+        ("200ml", 200, col1),
+        ("250ml", 250, col2),
+        ("300ml", 300, col3),
+        ("500ml", 500, col4),
+        ("1L", 1000, col5),
+    ]
+    
+    for label, ml, col in buttons:
+        with col:
+            if st.button(f"💧 {label}", use_container_width=True):
+                log_water(ml)
+                st.success(f"✅ Logged {ml}ml!")
+                st.rerun()
+    
+    st.divider()
+    
+    # Custom water entry
+    st.subheader("📝 Custom Water Entry")
+    
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        water_size = st.selectbox("Quick Size", list(WATER_SIZES.keys()))
+    
+    with col2:
+        if water_size == "Custom":
+            custom_ml = st.number_input("Enter amount (ml)", min_value=0, max_value=5000, value=250, step=50)
+        else:
+            custom_ml = WATER_SIZES[water_size]
+            st.write(f"**{custom_ml} ml selected**")
+    
+    if st.button("✅ Log This Water", type="primary"):
+        if custom_ml > 0:
+            log_water(custom_ml)
+            st.success(f"✅ Logged {custom_ml}ml of water!")
+            st.balloons()
+            st.rerun()
+        else:
+            st.error("Please enter an amount greater than 0")
+    
+    st.divider()
+    
+    # Water history
+    st.subheader("📋 Today's Water History")
+    today_water = get_today_water()
+    
+    if today_water:
+        for i, water in enumerate(today_water, 1):
+            st.write(f"{i}. {water['amount_ml']} ml at {water['time']}")
+    else:
+        st.info("No water logged yet!")
+
 # PAGE: Analytics
 elif page == "📊 Analytics":
     st.subheader("📊 Analytics & Trends")
@@ -729,7 +890,7 @@ elif page == "📊 Analytics":
     if not st.session_state.user_data["meals"]:
         st.info("Log some meals to see analytics!")
     else:
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
         
         with col1:
             st.metric("📝 Total Meals", st.session_state.user_data["total_meals_logged"])
@@ -738,10 +899,13 @@ elif page == "📊 Analytics":
             st.metric("🏋️ Total Workouts", st.session_state.user_data["total_workouts"])
         
         with col3:
+            st.metric("💧 Water Logged", st.session_state.user_data["total_water_logged"])
+        
+        with col4:
             days_logged = len(st.session_state.user_data["meals"])
             st.metric("📅 Days Logged", days_logged)
         
-        with col4:
+        with col5:
             st.metric("🏆 Best Streak", st.session_state.user_data["best_streak"])
         
         st.divider()
@@ -757,18 +921,21 @@ elif page == "📊 Analytics":
             date_display = (today - timedelta(days=i)).strftime("%a, %b %d")
             meals = st.session_state.user_data["meals"].get(date, [])
             workouts = st.session_state.user_data["workouts"].get(date, [])
+            water_entries = st.session_state.user_data["water_intake"].get(date, [])
             
             total_cal = sum(m["calories"] for m in meals)
             total_burned = sum(w["calories_burned"] for w in workouts)
             net = total_cal - total_burned
+            total_water = sum(w["amount_ml"] for w in water_entries)
             
             summary_data.append({
                 "Date": date_display,
                 "Consumed": total_cal,
                 "Burned": total_burned,
                 "Net": net,
+                "Water (ml)": total_water,
                 "Meals": len(meals),
-                "Workouts": len(workouts)
+                "Workouts": len(workouts),
             })
         
         df = pd.DataFrame(summary_data)
@@ -780,14 +947,17 @@ elif page == "⚖️ Weight":
     
     col1, col2, col3 = st.columns(3)
     
+    current_wt = float(st.session_state.user_data["current_weight"]) if isinstance(st.session_state.user_data["current_weight"], (int, float)) else 80.0
+    target_wt = float(st.session_state.user_data["target_weight"]) if isinstance(st.session_state.user_data["target_weight"], (int, float)) else 75.0
+    
     with col1:
-        st.metric("📊 Current Weight", f"{st.session_state.user_data['current_weight']} kg")
+        st.metric("📊 Current Weight", f"{current_wt} kg")
     
     with col2:
-        st.metric("🎯 Target Weight", f"{st.session_state.user_data['target_weight']} kg")
+        st.metric("🎯 Target Weight", f"{target_wt} kg")
     
     with col3:
-        difference = st.session_state.user_data["current_weight"] - st.session_state.user_data["target_weight"]
+        difference = current_wt - target_wt
         st.metric("📈 To Go", f"{difference} kg")
     
     st.divider()
@@ -796,10 +966,12 @@ elif page == "⚖️ Weight":
     col1, col2 = st.columns(2)
     
     with col1:
-        new_weight = st.number_input("Current Weight (kg)", value=st.session_state.user_data["current_weight"], min_value=20, max_value=300, step=0.1)
+        current_weight_value = float(st.session_state.user_data["current_weight"]) if isinstance(st.session_state.user_data["current_weight"], (int, float)) else 80.0
+        new_weight = st.number_input("Current Weight (kg)", value=current_weight_value, min_value=20.0, max_value=300.0, step=0.1)
     
     with col2:
-        target_weight = st.number_input("Target Weight (kg)", value=st.session_state.user_data["target_weight"], min_value=20, max_value=300, step=0.1)
+        target_weight_value = float(st.session_state.user_data["target_weight"]) if isinstance(st.session_state.user_data["target_weight"], (int, float)) else 75.0
+        target_weight = st.number_input("Target Weight (kg)", value=target_weight_value, min_value=20.0, max_value=300.0, step=0.1)
     
     if st.button("💾 Save Weight", type="primary"):
         today = get_today_key()
@@ -830,7 +1002,7 @@ elif page == "⚖️ Weight":
 elif page == "🏆 Achievements":
     st.subheader("🏆 Achievements")
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
         st.metric("📝 Meals Logged", st.session_state.user_data["total_meals_logged"])
@@ -839,9 +1011,12 @@ elif page == "🏆 Achievements":
         st.metric("🏋️ Workouts", st.session_state.user_data["total_workouts"])
     
     with col3:
-        st.metric("🏅 Achievements", f"{len(st.session_state.user_data['achievements'])}/{len(ACHIEVEMENTS)}")
+        st.metric("💧 Water", st.session_state.user_data["total_water_logged"])
     
     with col4:
+        st.metric("🏅 Achievements", f"{len(st.session_state.user_data['achievements'])}/{len(ACHIEVEMENTS)}")
+    
+    with col5:
         st.metric("📅 Streak", f"{get_meal_streak()} days")
     
     st.divider()
@@ -857,7 +1032,7 @@ elif page == "🏆 Achievements":
                     st.markdown(f"<div class='achievement-badge'>{ach['emoji']} {ach['name']}</div>", unsafe_allow_html=True)
                     st.caption(ach["description"])
         else:
-            st.info("🚀 Start logging meals and workouts!")
+            st.info("🚀 Start logging meals, workouts, and water!")
     
     with col2:
         st.write("### 🎯 Next Achievements")
@@ -887,11 +1062,15 @@ elif page == "⚙️ Settings":
             carbs_goal = st.number_input("Daily Carbs Goal (g)", value=st.session_state.user_data["daily_carbs_goal"], min_value=50, max_value=500, step=10)
             fat_goal = st.number_input("Daily Fat Goal (g)", value=st.session_state.user_data["daily_fat_goal"], min_value=20, max_value=200, step=5)
         
+        st.write("### Hydration Goal")
+        water_goal = st.number_input("Daily Water Goal (ml)", value=st.session_state.user_data["daily_water_goal"], min_value=500, max_value=5000, step=100)
+        
         if st.button("💾 Save Goals", type="primary"):
             st.session_state.user_data["daily_calorie_goal"] = calorie_goal
             st.session_state.user_data["daily_protein_goal"] = protein_goal
             st.session_state.user_data["daily_carbs_goal"] = carbs_goal
             st.session_state.user_data["daily_fat_goal"] = fat_goal
+            st.session_state.user_data["daily_water_goal"] = water_goal
             save_data()
             st.success("✅ Goals saved!")
     
@@ -909,15 +1088,18 @@ elif page == "⚙️ Settings":
                     "daily_protein_goal": 150,
                     "daily_carbs_goal": 225,
                     "daily_fat_goal": 65,
+                    "daily_water_goal": 2000,
                     "target_weight": 77,
                     "current_weight": 82,
                     "meals": {},
                     "workouts": {},
+                    "water_intake": {},
                     "weight_log": {},
                     "achievements": [],
                     "last_saved": None,
                     "total_meals_logged": 0,
                     "total_workouts": 0,
+                    "total_water_logged": 0,
                     "best_streak": 0,
                 }
                 save_data()
@@ -925,12 +1107,13 @@ elif page == "⚙️ Settings":
         
         st.divider()
         st.info("""
-        **Calorie Tracker v2.0** 🍎🏋️
+        **Calorie Tracker v3.0** 🍎💧🏋️
         
         ✨ Features:
         - 🎮 Leveling System with Ranks
         - 📝 Meal Logging with Macros
         - 🏋️ Workout Tracking (Calories Burned)
+        - 💧 Water Intake Tracking (NEW!)
         - 💪 Net Calorie Calculation
         - ⚖️ Weight Tracking (KG)
         - 🏆 10+ Achievements
