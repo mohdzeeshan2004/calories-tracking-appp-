@@ -48,6 +48,14 @@ st.markdown("""
         margin: 5px 0;
         box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
+    .workout-container {
+        background: linear-gradient(135deg, #FF6B6B 0%, #FFD93D 100%);
+        padding: 15px;
+        border-radius: 10px;
+        color: white;
+        margin: 5px 0;
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+    }
     .on-track {
         background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%);
         border-left: 4px solid #28a745;
@@ -98,6 +106,13 @@ st.markdown("""
         border-radius: 8px;
         margin: 5px 0;
         border-left: 4px solid #667eea;
+    }
+    .workout-item {
+        background: linear-gradient(135deg, #FFE5E5 0%, #FFF5E1 100%);
+        padding: 12px;
+        border-radius: 8px;
+        margin: 5px 0;
+        border-left: 4px solid #FF6B6B;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -164,16 +179,49 @@ COMMON_FOODS = {
     ],
 }
 
+WORKOUTS = {
+    "Cardio": [
+        {"name": "Running (30 min, moderate)", "calories_burned": 300},
+        {"name": "Running (30 min, intense)", "calories_burned": 450},
+        {"name": "Cycling (30 min, moderate)", "calories_burned": 250},
+        {"name": "Cycling (30 min, intense)", "calories_burned": 400},
+        {"name": "Walking (60 min)", "calories_burned": 200},
+        {"name": "Swimming (30 min)", "calories_burned": 350},
+        {"name": "Jump Rope (15 min)", "calories_burned": 250},
+        {"name": "HIIT Workout (20 min)", "calories_burned": 300},
+    ],
+    "Strength": [
+        {"name": "Weight Training (30 min)", "calories_burned": 200},
+        {"name": "Weight Training (60 min)", "calories_burned": 400},
+        {"name": "Push-ups (15 min)", "calories_burned": 100},
+        {"name": "Squats (15 min)", "calories_burned": 120},
+        {"name": "Deadlifts (15 min)", "calories_burned": 150},
+        {"name": "Bench Press (15 min)", "calories_burned": 140},
+    ],
+    "Flexibility": [
+        {"name": "Yoga (30 min)", "calories_burned": 120},
+        {"name": "Yoga (60 min)", "calories_burned": 240},
+        {"name": "Pilates (30 min)", "calories_burned": 150},
+        {"name": "Stretching (15 min)", "calories_burned": 30},
+    ],
+    "Sports": [
+        {"name": "Basketball (30 min)", "calories_burned": 250},
+        {"name": "Soccer (30 min)", "calories_burned": 280},
+        {"name": "Tennis (30 min)", "calories_burned": 300},
+        {"name": "Badminton (30 min)", "calories_burned": 200},
+    ],
+}
+
 ACHIEVEMENTS = {
     "first_meal": {"name": "First Bite", "description": "Log your first meal", "emoji": "🍽️"},
     "five_meals": {"name": "Meal Logger", "description": "Log 5 meals", "emoji": "📝"},
+    "first_workout": {"name": "Fitness Start", "description": "Log your first workout", "emoji": "💪"},
     "on_target": {"name": "Perfect Day", "description": "Stay within calorie goal", "emoji": "🎯"},
     "week_on_track": {"name": "Consistency", "description": "7 days on target", "emoji": "📅"},
-    "macro_master": {"name": "Macro Master", "description": "Hit macros within 10%", "emoji": "💪"},
+    "macro_master": {"name": "Macro Master", "description": "Hit macros within 10%", "emoji": "🎪"},
     "high_protein": {"name": "Protein Powerhouse", "description": "100g+ protein in one day", "emoji": "🥚"},
-    "veggie_warrior": {"name": "Veggie Warrior", "description": "200+ calories from veggies", "emoji": "🥬"},
-    "water_warrior": {"name": "Hydration Hero", "description": "8+ glasses of water", "emoji": "💧"},
-    "calorie_deficit": {"name": "Deficit Achiever", "description": "Maintain 500 cal deficit", "emoji": "📉"},
+    "workout_warrior": {"name": "Workout Warrior", "description": "Complete 5 workouts", "emoji": "🔥"},
+    "calorie_balance": {"name": "Balance Master", "description": "Achieve calorie deficit", "emoji": "⚖️"},
     "weight_milestone": {"name": "Milestone Reached", "description": "Reach weight goal", "emoji": "🏆"},
 }
 
@@ -230,13 +278,15 @@ if "user_data" not in st.session_state:
             "daily_protein_goal": 150,
             "daily_carbs_goal": 225,
             "daily_fat_goal": 65,
-            "target_weight": 170,
-            "current_weight": 180,
+            "target_weight": 77,  # kg
+            "current_weight": 82,  # kg
             "meals": {},
+            "workouts": {},  # date: [workout data]
             "weight_log": {},
             "achievements": [],
             "last_saved": None,
             "total_meals_logged": 0,
+            "total_workouts": 0,
             "best_streak": 0,
             "daily_bonus_claimed": False,
             "last_bonus_date": None,
@@ -290,10 +340,31 @@ def log_meal(meal_name, calories, protein, carbs, fat):
     add_experience(10)
     save_data()
 
+def log_workout(workout_name, calories_burned):
+    """Log a workout"""
+    today = get_today_key()
+    if today not in st.session_state.user_data["workouts"]:
+        st.session_state.user_data["workouts"][today] = []
+    
+    st.session_state.user_data["workouts"][today].append({
+        "name": workout_name,
+        "calories_burned": calories_burned,
+        "time": datetime.now().strftime("%H:%M")
+    })
+    
+    st.session_state.user_data["total_workouts"] += 1
+    add_experience(15)
+    save_data()
+
 def get_today_meals():
     """Get today's meals"""
     today = get_today_key()
     return st.session_state.user_data["meals"].get(today, [])
+
+def get_today_workouts():
+    """Get today's workouts"""
+    today = get_today_key()
+    return st.session_state.user_data["workouts"].get(today, [])
 
 def get_today_totals():
     """Get today's totals"""
@@ -307,6 +378,18 @@ def get_today_totals():
         totals["fat"] += meal["fat"]
     
     return totals
+
+def get_today_burned():
+    """Get calories burned today"""
+    workouts = get_today_workouts()
+    burned = sum(w["calories_burned"] for w in workouts)
+    return burned
+
+def get_net_calories():
+    """Get net calories (consumed - burned)"""
+    today_totals = get_today_totals()
+    today_burned = get_today_burned()
+    return today_totals["calories"] - today_burned
 
 def get_meal_streak():
     """Get meal streak"""
@@ -374,7 +457,7 @@ else:
 
 st.sidebar.divider()
 
-page = st.sidebar.radio("Navigation", ["🏠 Home", "🍽️ Log Meal", "📊 Analytics", "⚖️ Weight", "🏆 Achievements", "⚙️ Settings"])
+page = st.sidebar.radio("Navigation", ["🏠 Home", "🍽️ Log Meal", "🏋️ Log Workout", "📊 Analytics", "⚖️ Weight", "🏆 Achievements", "⚙️ Settings"])
 
 # Main Header
 col1, col2, col3 = st.columns([2, 2, 1])
@@ -404,7 +487,7 @@ with col3:
     <div class='goal-container'>
         <h4>🎯 Daily Goal</h4>
         <p style='margin: 5px 0;'>{st.session_state.user_data['daily_calorie_goal']} cal</p>
-        <small>Weight: {st.session_state.user_data['current_weight']} lbs</small>
+        <small>Weight: {st.session_state.user_data['current_weight']} kg</small>
     </div>
     """, unsafe_allow_html=True)
 
@@ -420,12 +503,15 @@ st.markdown(f"""
 # PAGE: Home
 if page == "🏠 Home":
     today_meals = get_today_meals()
+    today_workouts = get_today_workouts()
     today_totals = get_today_totals()
+    today_burned = get_today_burned()
+    net_calories = get_net_calories()
     
-    col1, col2, col3, col4 = st.columns(4)
+    col1, col2, col3, col4, col5 = st.columns(5)
     
     with col1:
-        remaining = st.session_state.user_data["daily_calorie_goal"] - today_totals["calories"]
+        remaining = st.session_state.user_data["daily_calorie_goal"] - net_calories
         color = "🟢" if remaining >= 0 else "🔴"
         st.metric(f"{color} Remaining", f"{max(0, remaining)} cal")
     
@@ -433,32 +519,47 @@ if page == "🏠 Home":
         st.metric("📝 Meals", len(today_meals))
     
     with col3:
-        streak = get_meal_streak()
-        st.metric("📅 Streak", f"{streak} days")
+        st.metric("🏋️ Workouts", len(today_workouts))
     
     with col4:
+        st.metric("📅 Streak", f"{get_meal_streak()} days")
+    
+    with col5:
         st.metric("⭐ Total Logged", st.session_state.user_data["total_meals_logged"])
     
     st.divider()
     
-    # Today's calories status
-    goal = st.session_state.user_data["daily_calorie_goal"]
-    consumed = today_totals["calories"]
+    # Calorie summary
+    col1, col2, col3 = st.columns(3)
     
-    if consumed == 0:
-        st.info("📝 No meals logged yet. Start by logging a meal!")
-    elif consumed <= goal:
-        status = "✅ ON TRACK!"
+    with col1:
         st.markdown(f"""
         <div class='on-track'>
-            <b>{status}</b> You're doing great! {goal - consumed} calories remaining.
+            <h3>🍽️ Consumed</h3>
+            <h2>{today_totals["calories"]} cal</h2>
         </div>
         """, unsafe_allow_html=True)
-    else:
-        excess = consumed - goal
+    
+    with col2:
         st.markdown(f"""
-        <div class='over-calories'>
-            <b>⚠️ OVER GOAL</b> You've consumed {excess} extra calories. Time to get moving!
+        <div class='workout-container'>
+            <h3>🏋️ Burned</h3>
+            <h2>{today_burned} cal</h2>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        if net_calories <= st.session_state.user_data["daily_calorie_goal"]:
+            status_color = "on-track"
+            status_text = "✅ ON TRACK"
+        else:
+            status_color = "over-calories"
+            status_text = "⚠️ OVER GOAL"
+        
+        st.markdown(f"""
+        <div class='{status_color}'>
+            <h3>{status_text}</h3>
+            <h2>Net: {net_calories} cal</h2>
         </div>
         """, unsafe_allow_html=True)
     
@@ -506,7 +607,7 @@ if page == "🏠 Home":
     # Today's meals
     st.subheader("🍽️ Today's Meals")
     if today_meals:
-        for i, meal in enumerate(today_meals):
+        for meal in today_meals:
             st.markdown(f"""
             <div class='food-item'>
                 <b>{meal['name']}</b> ({meal['time']})
@@ -516,6 +617,22 @@ if page == "🏠 Home":
             """, unsafe_allow_html=True)
     else:
         st.info("No meals logged yet. Log your first meal to start!")
+    
+    st.divider()
+    
+    # Today's workouts
+    st.subheader("🏋️ Today's Workouts")
+    if today_workouts:
+        for workout in today_workouts:
+            st.markdown(f"""
+            <div class='workout-item'>
+                <b>{workout['name']}</b> ({workout['time']})
+                <br>
+                🔥 Burned: {workout['calories_burned']} calories
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No workouts logged yet. Add a workout to burn calories!")
 
 # PAGE: Log Meal
 elif page == "🍽️ Log Meal":
@@ -563,6 +680,48 @@ elif page == "🍽️ Log Meal":
             else:
                 st.error("Please enter a food name")
 
+# PAGE: Log Workout
+elif page == "🏋️ Log Workout":
+    st.subheader("🏋️ Log a Workout")
+    
+    tab1, tab2 = st.tabs(["Quick Select", "Custom Entry"])
+    
+    with tab1:
+        st.write("### Select from common workouts")
+        
+        category = st.selectbox("Workout Category", list(WORKOUTS.keys()))
+        workouts = WORKOUTS[category]
+        
+        workout_option = st.selectbox("Workout", [f"{w['name']} ({w['calories_burned']} cal)" for w in workouts])
+        
+        selected_idx = [f"{w['name']} ({w['calories_burned']} cal)" for w in workouts].index(workout_option)
+        selected_workout = workouts[selected_idx]
+        
+        if st.button("✅ Log This Workout", type="primary", key="log_quick_workout"):
+            log_workout(selected_workout["name"], selected_workout["calories_burned"])
+            st.success(f"✅ Logged {selected_workout['name']}! 🔥")
+            st.balloons()
+            st.rerun()
+    
+    with tab2:
+        st.write("### Enter custom workout")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            workout_name = st.text_input("Workout Name")
+        
+        with col2:
+            calories_burned = st.number_input("Calories Burned", min_value=0, max_value=1000, value=100, step=10)
+        
+        if st.button("✅ Log Custom Workout", type="primary", key="log_custom_workout"):
+            if workout_name:
+                log_workout(workout_name, calories_burned)
+                st.success(f"✅ Logged {workout_name}! 🔥")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("Please enter a workout name")
+
 # PAGE: Analytics
 elif page == "📊 Analytics":
     st.subheader("📊 Analytics & Trends")
@@ -576,19 +735,18 @@ elif page == "📊 Analytics":
             st.metric("📝 Total Meals", st.session_state.user_data["total_meals_logged"])
         
         with col2:
-            days_logged = len(st.session_state.user_data["meals"])
-            st.metric("📅 Days Logged", days_logged)
+            st.metric("🏋️ Total Workouts", st.session_state.user_data["total_workouts"])
         
         with col3:
-            streak = get_meal_streak()
-            st.metric("🔥 Streak", f"{streak} days")
+            days_logged = len(st.session_state.user_data["meals"])
+            st.metric("📅 Days Logged", days_logged)
         
         with col4:
             st.metric("🏆 Best Streak", st.session_state.user_data["best_streak"])
         
         st.divider()
         
-        # Simple table of last 7 days
+        # Last 7 days summary
         st.subheader("📅 Last 7 Days Summary")
         
         summary_data = []
@@ -598,19 +756,19 @@ elif page == "📊 Analytics":
             date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
             date_display = (today - timedelta(days=i)).strftime("%a, %b %d")
             meals = st.session_state.user_data["meals"].get(date, [])
+            workouts = st.session_state.user_data["workouts"].get(date, [])
             
             total_cal = sum(m["calories"] for m in meals)
-            total_protein = sum(m["protein"] for m in meals)
-            total_carbs = sum(m["carbs"] for m in meals)
-            total_fat = sum(m["fat"] for m in meals)
+            total_burned = sum(w["calories_burned"] for w in workouts)
+            net = total_cal - total_burned
             
             summary_data.append({
                 "Date": date_display,
-                "Calories": total_cal,
-                "Protein": total_protein,
-                "Carbs": total_carbs,
-                "Fat": total_fat,
-                "Meals": len(meals)
+                "Consumed": total_cal,
+                "Burned": total_burned,
+                "Net": net,
+                "Meals": len(meals),
+                "Workouts": len(workouts)
             })
         
         df = pd.DataFrame(summary_data)
@@ -623,14 +781,14 @@ elif page == "⚖️ Weight":
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.metric("📊 Current Weight", f"{st.session_state.user_data['current_weight']} lbs")
+        st.metric("📊 Current Weight", f"{st.session_state.user_data['current_weight']} kg")
     
     with col2:
-        st.metric("🎯 Target Weight", f"{st.session_state.user_data['target_weight']} lbs")
+        st.metric("🎯 Target Weight", f"{st.session_state.user_data['target_weight']} kg")
     
     with col3:
         difference = st.session_state.user_data["current_weight"] - st.session_state.user_data["target_weight"]
-        st.metric("📈 To Go", f"{difference} lbs")
+        st.metric("📈 To Go", f"{difference} kg")
     
     st.divider()
     
@@ -638,10 +796,10 @@ elif page == "⚖️ Weight":
     col1, col2 = st.columns(2)
     
     with col1:
-        new_weight = st.number_input("Current Weight (lbs)", value=st.session_state.user_data["current_weight"], min_value=50, max_value=500)
+        new_weight = st.number_input("Current Weight (kg)", value=st.session_state.user_data["current_weight"], min_value=20, max_value=300, step=0.1)
     
     with col2:
-        target_weight = st.number_input("Target Weight (lbs)", value=st.session_state.user_data["target_weight"], min_value=50, max_value=500)
+        target_weight = st.number_input("Target Weight (kg)", value=st.session_state.user_data["target_weight"], min_value=20, max_value=300, step=0.1)
     
     if st.button("💾 Save Weight", type="primary"):
         today = get_today_key()
@@ -662,7 +820,7 @@ elif page == "⚖️ Weight":
         for date in sorted(st.session_state.user_data["weight_log"].keys(), reverse=True)[:10]:
             weight_data.append({
                 "Date": date,
-                "Weight": st.session_state.user_data["weight_log"][date]
+                "Weight (kg)": st.session_state.user_data["weight_log"][date]
             })
         
         df_weight = pd.DataFrame(weight_data)
@@ -672,15 +830,18 @@ elif page == "⚖️ Weight":
 elif page == "🏆 Achievements":
     st.subheader("🏆 Achievements")
     
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     
     with col1:
         st.metric("📝 Meals Logged", st.session_state.user_data["total_meals_logged"])
     
     with col2:
-        st.metric("🏅 Achievements", f"{len(st.session_state.user_data['achievements'])}/{len(ACHIEVEMENTS)}")
+        st.metric("🏋️ Workouts", st.session_state.user_data["total_workouts"])
     
     with col3:
+        st.metric("🏅 Achievements", f"{len(st.session_state.user_data['achievements'])}/{len(ACHIEVEMENTS)}")
+    
+    with col4:
         st.metric("📅 Streak", f"{get_meal_streak()} days")
     
     st.divider()
@@ -696,7 +857,7 @@ elif page == "🏆 Achievements":
                     st.markdown(f"<div class='achievement-badge'>{ach['emoji']} {ach['name']}</div>", unsafe_allow_html=True)
                     st.caption(ach["description"])
         else:
-            st.info("🚀 Start logging meals!")
+            st.info("🚀 Start logging meals and workouts!")
     
     with col2:
         st.write("### 🎯 Next Achievements")
@@ -748,13 +909,15 @@ elif page == "⚙️ Settings":
                     "daily_protein_goal": 150,
                     "daily_carbs_goal": 225,
                     "daily_fat_goal": 65,
-                    "target_weight": 170,
-                    "current_weight": 180,
+                    "target_weight": 77,
+                    "current_weight": 82,
                     "meals": {},
+                    "workouts": {},
                     "weight_log": {},
                     "achievements": [],
                     "last_saved": None,
                     "total_meals_logged": 0,
+                    "total_workouts": 0,
                     "best_streak": 0,
                 }
                 save_data()
@@ -762,17 +925,19 @@ elif page == "⚙️ Settings":
         
         st.divider()
         st.info("""
-        **Calorie Tracker v1.0** 🍎
+        **Calorie Tracker v2.0** 🍎🏋️
         
         ✨ Features:
-        - 🎮 Leveling System
-        - 📝 Meal Logging
-        - 💪 Macro Tracking
-        - ⚖️ Weight Tracking
-        - 🏆 Achievements
-        - 💾 Auto-Save
-        - 🎁 Daily Bonus
+        - 🎮 Leveling System with Ranks
+        - 📝 Meal Logging with Macros
+        - 🏋️ Workout Tracking (Calories Burned)
+        - 💪 Net Calorie Calculation
+        - ⚖️ Weight Tracking (KG)
+        - 🏆 10+ Achievements
+        - 📊 Analytics & Trends
+        - 💾 Auto-Save Feature
+        - 🎁 Daily Bonus XP
         """)
 
 st.sidebar.divider()
-st.sidebar.write("**Made with 💚 for Nutrition Goals**")
+st.sidebar.write("**Made with 💚 for Health & Fitness**")
