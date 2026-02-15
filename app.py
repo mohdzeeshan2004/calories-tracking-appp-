@@ -2,83 +2,65 @@ import streamlit as st
 import pandas as pd
 import json
 from datetime import datetime, timedelta
-import plotly.graph_objects as go
-import plotly.express as px
-from collections import defaultdict
-import math
 import os
 import random
 
 # Set page config
 st.set_page_config(
-    page_title="Daily Tracker - Leveling System",
-    page_icon="⚔️",
+    page_title="Calorie Tracker - Nutrition Leveling System",
+    page_icon="🍎",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS with enhanced styling
+# Custom CSS
 st.markdown("""
     <style>
     .level-container {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
         padding: 20px;
         border-radius: 10px;
         color: white;
         margin: 10px 0;
-        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
         transition: transform 0.3s ease;
     }
     .level-container:hover {
         transform: translateY(-5px);
     }
     .rank-container {
-        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+        background: linear-gradient(135deg, #4ECDC4 0%, #44A08D 100%);
         padding: 20px;
         border-radius: 10px;
         color: white;
         margin: 10px 0;
-        box-shadow: 0 4px 15px rgba(245, 87, 108, 0.4);
+        box-shadow: 0 4px 15px rgba(78, 205, 196, 0.4);
         transition: transform 0.3s ease;
     }
     .rank-container:hover {
         transform: translateY(-5px);
     }
-    .season-container {
-        background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+    .goal-container {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 15px;
         border-radius: 10px;
         color: white;
         margin: 5px 0;
-        box-shadow: 0 4px 15px rgba(79, 172, 254, 0.4);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
     }
-    .task-completed {
+    .on-track {
         background: linear-gradient(90deg, #d4edda 0%, #c3e6cb 100%);
         border-left: 4px solid #28a745;
         padding: 12px;
         margin: 8px 0;
         border-radius: 8px;
-        transition: all 0.3s ease;
-        animation: slideIn 0.3s ease;
     }
-    .task-pending {
-        background: linear-gradient(90deg, #fff3cd 0%, #ffeaa7 100%);
-        border-left: 4px solid #ffc107;
+    .over-calories {
+        background: linear-gradient(90deg, #f8d7da 0%, #f5c6cb 100%);
+        border-left: 4px solid #dc3545;
         padding: 12px;
         margin: 8px 0;
         border-radius: 8px;
-        transition: all 0.3s ease;
-        animation: slideIn 0.3s ease;
-    }
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateX(-20px);
-        }
-        to {
-            opacity: 1;
-            transform: translateX(0);
-        }
     }
     .achievement-badge {
         display: inline-block;
@@ -89,20 +71,6 @@ st.markdown("""
         font-weight: bold;
         margin: 5px;
         box-shadow: 0 4px 12px rgba(255, 165, 0, 0.3);
-        animation: popIn 0.5s ease;
-    }
-    @keyframes popIn {
-        0% {
-            transform: scale(0.8);
-            opacity: 0;
-        }
-        50% {
-            transform: scale(1.1);
-        }
-        100% {
-            transform: scale(1);
-            opacity: 1;
-        }
     }
     .motivation-card {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -115,270 +83,187 @@ st.markdown("""
         font-size: 18px;
         font-style: italic;
     }
-    .milestone-card {
-        background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
+    .macro-card {
+        background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
         padding: 15px;
         border-radius: 10px;
         color: white;
-        margin: 10px 0;
+        margin: 5px;
         text-align: center;
-        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
+        box-shadow: 0 4px 12px rgba(245, 87, 108, 0.3);
     }
-    .streak-card {
-        background: linear-gradient(135deg, #FF6B6B 0%, #FFE66D 100%);
-        padding: 15px;
-        border-radius: 10px;
-        color: white;
-        margin: 10px 0;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(255, 107, 107, 0.4);
-        font-weight: bold;
-    }
-    .reward-notification {
-        background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-        padding: 15px;
-        border-radius: 10px;
-        color: white;
-        margin: 10px 0;
-        text-align: center;
-        box-shadow: 0 4px 15px rgba(255, 165, 0, 0.4);
-        animation: pulse 0.5s ease;
-    }
-    @keyframes pulse {
-        0%, 100% {
-            transform: scale(1);
-        }
-        50% {
-            transform: scale(1.05);
-        }
-    }
-    .daily-challenge {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 15px;
-        border-radius: 10px;
-        color: white;
-        margin: 10px 0;
-        border: 2px solid #FFD700;
-    }
-    .progress-detail {
-        background: #f0f0f0;
-        padding: 10px;
-        border-radius: 5px;
+    .food-item {
+        background: #f8f9fa;
+        padding: 12px;
+        border-radius: 8px;
         margin: 5px 0;
+        border-left: 4px solid #667eea;
     }
     </style>
 """, unsafe_allow_html=True)
 
 # Motivational quotes
-MOTIVATIONAL_QUOTES = [
-    "🌟 Every small step counts! Keep going!",
-    "💪 You're building a better version of yourself!",
-    "🚀 Success is the sum of small efforts repeated day after day!",
-    "⭐ Your consistency is your superpower!",
-    "🔥 Don't break the chain! Keep that streak alive!",
-    "🎯 Progress, not perfection!",
-    "💎 You're becoming unstoppable!",
-    "🏆 Your future self will thank you!",
-    "✨ Every task completed is a victory!",
-    "🌱 Small daily habits create big life changes!",
-    "👑 You are the hero of your own story!",
-    "⚡ Discipline is choosing what you want most over what you want now!",
-    "🎪 Fun fact: Winners never quit, quitters never win!",
-    "🌈 Today's effort = Tomorrow's success!",
-    "🎭 Your mind is your greatest superpower!",
+NUTRITION_QUOTES = [
+    "🥗 You are what you eat - make it count!",
+    "💪 Fuel your body, fuel your dreams!",
+    "🌟 Every healthy meal is a victory!",
+    "🎯 Your body will thank you tomorrow!",
+    "🔥 Progress over perfection!",
+    "🌱 Small choices = Big changes!",
+    "💚 Love your body, feed it well!",
+    "⭐ You've got this! One meal at a time!",
+    "🎪 Consistency builds health!",
+    "🏆 Be the best version of yourself!",
+    "✨ Nutrition is self-care!",
+    "🚀 Your health is your wealth!",
+    "💎 Invest in yourself - eat well!",
+    "🌈 Balance is key, not perfection!",
+    "👑 Own your nutrition journey!",
 ]
 
-DAILY_CHALLENGES = [
-    {"name": "Power Hour", "description": "Complete 3 tasks in one hour", "reward": 50},
-    {"name": "Perfect Day", "description": "Complete ALL tasks for the day", "reward": 100},
-    {"name": "Consistency King", "description": "Complete tasks 3 days in a row", "reward": 75},
-    {"name": "Early Bird", "description": "Complete a task before 9 AM", "reward": 30},
-    {"name": "Night Owl", "description": "Complete a task after 9 PM", "reward": 25},
-]
-
-TIER_EMOJIS = {
-    1: "🐤", 2: "🦅", 3: "🦁", 4: "🐉", 5: "👑",
-    10: "⭐", 20: "💫", 30: "✨", 50: "🌟", 100: "🏆"
+COMMON_FOODS = {
+    "Breakfast": [
+        {"name": "Oatmeal (1 cup)", "calories": 150, "protein": 5, "carbs": 27, "fat": 3},
+        {"name": "Eggs (2)", "calories": 155, "protein": 13, "carbs": 1, "fat": 11},
+        {"name": "Banana", "calories": 105, "protein": 1, "carbs": 27, "fat": 0},
+        {"name": "Greek Yogurt (1 cup)", "calories": 130, "protein": 23, "carbs": 9, "fat": 0},
+        {"name": "Toast with Butter", "calories": 200, "protein": 6, "carbs": 28, "fat": 9},
+        {"name": "Smoothie (avg)", "calories": 250, "protein": 8, "carbs": 45, "fat": 6},
+    ],
+    "Lunch": [
+        {"name": "Chicken Breast (100g)", "calories": 165, "protein": 31, "carbs": 0, "fat": 3},
+        {"name": "Rice (1 cup)", "calories": 206, "protein": 4, "carbs": 45, "fat": 0},
+        {"name": "Salmon (100g)", "calories": 206, "protein": 22, "carbs": 0, "fat": 13},
+        {"name": "Salad (avg)", "calories": 150, "protein": 5, "carbs": 12, "fat": 8},
+        {"name": "Pasta (1 cup)", "calories": 220, "protein": 8, "carbs": 43, "fat": 1},
+        {"name": "Burger", "calories": 540, "protein": 30, "carbs": 40, "fat": 28},
+    ],
+    "Dinner": [
+        {"name": "Grilled Fish (100g)", "calories": 180, "protein": 25, "carbs": 0, "fat": 8},
+        {"name": "Broccoli (1 cup)", "calories": 55, "protein": 3, "carbs": 11, "fat": 0},
+        {"name": "Sweet Potato", "calories": 103, "protein": 2, "carbs": 24, "fat": 0},
+        {"name": "Steak (100g)", "calories": 250, "protein": 26, "carbs": 0, "fat": 15},
+        {"name": "Spinach (1 cup)", "calories": 7, "protein": 1, "carbs": 1, "fat": 0},
+        {"name": "Pizza (1 slice)", "calories": 285, "protein": 12, "carbs": 36, "fat": 10},
+    ],
+    "Snacks": [
+        {"name": "Apple", "calories": 95, "protein": 0, "carbs": 25, "fat": 0},
+        {"name": "Almonds (1 oz)", "calories": 164, "protein": 6, "carbs": 6, "fat": 14},
+        {"name": "Protein Bar", "calories": 200, "protein": 20, "carbs": 22, "fat": 5},
+        {"name": "Greek Yogurt (small)", "calories": 100, "protein": 17, "carbs": 7, "fat": 0},
+        {"name": "Peanut Butter (2 tbsp)", "calories": 188, "protein": 8, "carbs": 7, "fat": 16},
+        {"name": "Chips (1 oz)", "calories": 150, "protein": 2, "carbs": 15, "fat": 10},
+    ],
+    "Beverages": [
+        {"name": "Water", "calories": 0, "protein": 0, "carbs": 0, "fat": 0},
+        {"name": "Green Tea", "calories": 2, "protein": 0, "carbs": 0, "fat": 0},
+        {"name": "Coffee (black)", "calories": 5, "protein": 0, "carbs": 0, "fat": 0},
+        {"name": "Orange Juice (1 cup)", "calories": 112, "protein": 2, "carbs": 26, "fat": 0},
+        {"name": "Soda (1 can)", "calories": 140, "protein": 0, "carbs": 39, "fat": 0},
+        {"name": "Protein Shake", "calories": 180, "protein": 25, "carbs": 8, "fat": 2},
+    ],
 }
 
-# Data storage utilities
-DATA_DIR = "user_data"
+ACHIEVEMENTS = {
+    "first_meal": {"name": "First Bite", "description": "Log your first meal", "emoji": "🍽️"},
+    "five_meals": {"name": "Meal Logger", "description": "Log 5 meals", "emoji": "📝"},
+    "on_target": {"name": "Perfect Day", "description": "Stay within calorie goal", "emoji": "🎯"},
+    "week_on_track": {"name": "Consistency", "description": "7 days on target", "emoji": "📅"},
+    "macro_master": {"name": "Macro Master", "description": "Hit macros within 10%", "emoji": "💪"},
+    "high_protein": {"name": "Protein Powerhouse", "description": "100g+ protein in one day", "emoji": "🥚"},
+    "veggie_warrior": {"name": "Veggie Warrior", "description": "200+ calories from veggies", "emoji": "🥬"},
+    "water_warrior": {"name": "Hydration Hero", "description": "8+ glasses of water", "emoji": "💧"},
+    "calorie_deficit": {"name": "Deficit Achiever", "description": "Maintain 500 cal deficit", "emoji": "📉"},
+    "weight_milestone": {"name": "Milestone Reached", "description": "Reach weight goal", "emoji": "🏆"},
+}
+
+RANK_SYSTEM = [
+    {"rank": "BEGINNER", "min_points": 0, "emoji": "🌱"},
+    {"rank": "APPRENTICE", "min_points": 100, "emoji": "👨‍🍳"},
+    {"rank": "CHEF", "min_points": 250, "emoji": "🍽️"},
+    {"rank": "MASTER CHEF", "min_points": 500, "emoji": "👨‍🍳"},
+    {"rank": "NUTRITION EXPERT", "min_points": 1000, "emoji": "💚"},
+    {"rank": "HEALTH CHAMPION", "min_points": 2000, "emoji": "🏆"},
+    {"rank": "LEGEND", "min_points": 5000, "emoji": "👑"},
+]
+
+# Data storage
+DATA_DIR = "calorie_data"
 if not os.path.exists(DATA_DIR):
     os.makedirs(DATA_DIR)
 
-def save_user_data(filename="tracker_data.json"):
-    """Save user data to JSON file"""
+def save_data(filename="tracker.json"):
+    """Save data to JSON"""
     try:
         filepath = os.path.join(DATA_DIR, filename)
         with open(filepath, 'w') as f:
             json.dump(st.session_state.user_data, f, indent=4)
-        return True, filepath
-    except Exception as e:
-        return False, str(e)
+        return True
+    except:
+        return False
 
-def load_user_data(filename="tracker_data.json"):
-    """Load user data from JSON file"""
+def load_data(filename="tracker.json"):
+    """Load data from JSON"""
     try:
         filepath = os.path.join(DATA_DIR, filename)
         if os.path.exists(filepath):
             with open(filepath, 'r') as f:
                 return json.load(f)
         return None
-    except Exception as e:
+    except:
         return None
-
-def get_saved_files():
-    """Get list of all saved data files"""
-    try:
-        files = [f for f in os.listdir(DATA_DIR) if f.endswith('.json')]
-        return files
-    except:
-        return []
-
-def delete_save_file(filename):
-    """Delete a saved data file"""
-    try:
-        filepath = os.path.join(DATA_DIR, filename)
-        if os.path.exists(filepath):
-            os.remove(filepath)
-            return True
-    except:
-        return False
 
 # Initialize session state
 if "user_data" not in st.session_state:
-    loaded_data = load_user_data()
-    if loaded_data:
-        st.session_state.user_data = loaded_data
+    loaded = load_data()
+    if loaded:
+        st.session_state.user_data = loaded
     else:
         st.session_state.user_data = {
-            "current_season": 1,
+            "username": "Nutritionist",
             "level": 1,
             "experience": 0,
             "exp_needed": 100,
-            "rank": "BRONZE",
+            "rank": "BEGINNER",
             "rank_points": 0,
-            "daily_tasks": [],
-            "completion_history": {},
+            "daily_calorie_goal": 2000,
+            "daily_protein_goal": 150,
+            "daily_carbs_goal": 225,
+            "daily_fat_goal": 65,
+            "target_weight": 170,
+            "current_weight": 180,
+            "meals": {},
+            "weight_log": {},
             "achievements": [],
-            "last_level_up": None,
             "last_saved": None,
-            "total_tasks_completed": 0,
-            "total_exp_earned": 0,
+            "total_meals_logged": 0,
             "best_streak": 0,
             "daily_bonus_claimed": False,
             "last_bonus_date": None,
-            "setup_complete": False
         }
 
-# Rank system
-RANK_SYSTEM = [
-    {"rank": "BRONZE", "min_points": 0, "color": "#CD7F32", "emoji": "🥉"},
-    {"rank": "SILVER", "min_points": 100, "color": "#C0C0C0", "emoji": "🥈"},
-    {"rank": "GOLD", "min_points": 250, "color": "#FFD700", "emoji": "🥇"},
-    {"rank": "PLATINUM", "min_points": 500, "color": "#E5E4E2", "emoji": "💎"},
-    {"rank": "DIAMOND", "min_points": 1000, "color": "#B9F2FF", "emoji": "✨"},
-    {"rank": "MASTER", "min_points": 2000, "color": "#8B0000", "emoji": "🔥"},
-    {"rank": "GRANDMASTER", "min_points": 3500, "color": "#FFD700", "emoji": "⚡"},
-    {"rank": "LEGEND", "min_points": 5000, "color": "#FF6347", "emoji": "👑"},
-]
-
-DIFFICULTY_COLORS = {
-    "common": "#95a5a6",
-    "rare": "#3498db",
-    "epic": "#9b59b6",
-    "legendary": "#f39c12"
-}
-
-DIFFICULTY_EXP = {
-    "common": 1,
-    "rare": 1.5,
-    "epic": 2.5,
-    "legendary": 5
-}
-
-SEASONS = {
-    1: {"name": "The Awakening", "start_date": "Jan 1", "end_date": "Mar 31"},
-    2: {"name": "Rise of Power", "start_date": "Apr 1", "end_date": "Jun 30"},
-    3: {"name": "Dark Shadow", "start_date": "Jul 1", "end_date": "Sep 30"},
-    4: {"name": "Eternal Destiny", "start_date": "Oct 1", "end_date": "Dec 31"},
-}
-
-CATEGORIES = {
-    "fitness": "🏋️",
-    "learning": "📚",
-    "wellness": "💪",
-    "productivity": "⚙️",
-    "mindfulness": "🧠",
-    "creativity": "🎨",
-    "social": "👥",
-    "health": "❤️"
-}
-
-ACHIEVEMENTS = {
-    "first_task": {"name": "First Step", "description": "Complete your first task", "emoji": "👣"},
-    "five_tasks": {"name": "Getting Started", "description": "Complete 5 tasks", "emoji": "🚀"},
-    "ten_tasks": {"name": "Growing Stronger", "description": "Complete 10 tasks", "emoji": "💪"},
-    "fifty_tasks": {"name": "Warrior", "description": "Complete 50 tasks", "emoji": "⚔️"},
-    "hundred_tasks": {"name": "Unstoppable", "description": "Complete 100 tasks", "emoji": "⚡"},
-    "week_streak": {"name": "On Fire", "description": "Achieve 7-day streak", "emoji": "🔥"},
-    "month_streak": {"name": "Unstoppable Force", "description": "Achieve 30-day streak", "emoji": "💥"},
-    "level_ten": {"name": "Rising Star", "description": "Reach Level 10", "emoji": "⭐"},
-    "rank_gold": {"name": "Golden Champion", "description": "Reach Gold rank", "emoji": "👑"},
-    "rank_legend": {"name": "Legendary", "description": "Reach Legend rank", "emoji": "🌟"},
-}
-
 def get_current_rank(rank_points):
-    """Get current rank based on rank points"""
+    """Get current rank"""
     for i in range(len(RANK_SYSTEM) - 1, -1, -1):
         if rank_points >= RANK_SYSTEM[i]["min_points"]:
             return RANK_SYSTEM[i]
     return RANK_SYSTEM[0]
 
-def get_exp_needed_for_level(level):
-    """Calculate EXP needed to reach next level"""
-    return 100 + (level - 1) * 50
-
-def check_achievements():
-    """Check and award achievements"""
-    user = st.session_state.user_data
-    total_completed = user.get("total_tasks_completed", 0)
-    
-    achievements_to_award = []
-    
-    conditions = [
-        (total_completed == 1, "first_task"),
-        (total_completed == 5, "five_tasks"),
-        (total_completed == 10, "ten_tasks"),
-        (total_completed == 50, "fifty_tasks"),
-        (total_completed == 100, "hundred_tasks"),
-        (get_completion_streak() == 7, "week_streak"),
-        (get_completion_streak() == 30, "month_streak"),
-        (user["level"] == 10, "level_ten"),
-        (user["rank"] == "GOLD", "rank_gold"),
-        (user["rank"] == "LEGEND", "rank_legend"),
-    ]
-    
-    for condition, ach_id in conditions:
-        if condition and ach_id not in user["achievements"]:
-            user["achievements"].append(ach_id)
-            achievements_to_award.append(ach_id)
-    
-    return achievements_to_award
+def get_today_key():
+    """Get today's date as key"""
+    return datetime.now().strftime("%Y-%m-%d")
 
 def add_experience(exp_amount):
-    """Add experience and handle level up"""
+    """Add experience"""
     user = st.session_state.user_data
     user["experience"] += exp_amount
-    user["total_exp_earned"] = user.get("total_exp_earned", 0) + exp_amount
-    leveled_up = False
     
+    leveled_up = False
     while user["experience"] >= user["exp_needed"]:
         user["experience"] -= user["exp_needed"]
         user["level"] += 1
-        user["rank_points"] += 10
-        user["exp_needed"] = get_exp_needed_for_level(user["level"])
-        user["last_level_up"] = datetime.now().strftime("%Y-%m-%d %H:%M")
+        user["rank_points"] += 20
+        user["exp_needed"] = 100 + (user["level"] - 1) * 50
         leveled_up = True
     
     new_rank = get_current_rank(user["rank_points"])
@@ -386,43 +271,53 @@ def add_experience(exp_amount):
     
     return leveled_up
 
-def get_today_key():
-    """Get today's date as key"""
-    return datetime.now().strftime("%Y-%m-%d")
-
-def mark_task_complete(task_id):
-    """Mark a task as complete for today"""
+def log_meal(meal_name, calories, protein, carbs, fat):
+    """Log a meal"""
     today = get_today_key()
+    if today not in st.session_state.user_data["meals"]:
+        st.session_state.user_data["meals"][today] = []
     
-    if today not in st.session_state.user_data["completion_history"]:
-        st.session_state.user_data["completion_history"][today] = []
+    st.session_state.user_data["meals"][today].append({
+        "name": meal_name,
+        "calories": calories,
+        "protein": protein,
+        "carbs": carbs,
+        "fat": fat,
+        "time": datetime.now().strftime("%H:%M")
+    })
     
-    for task in st.session_state.user_data["daily_tasks"]:
-        if task["id"] == task_id:
-            exp_earned = task["exp"] * DIFFICULTY_EXP.get(task["difficulty"], 1)
-            leveled_up = add_experience(int(exp_earned))
-            st.session_state.user_data["completion_history"][today].append(task_id)
-            st.session_state.user_data["rank_points"] += 5
-            st.session_state.user_data["total_tasks_completed"] += 1
-            achievements = check_achievements()
-            return leveled_up, achievements
-    
-    return False, []
+    st.session_state.user_data["total_meals_logged"] += 1
+    add_experience(10)
+    save_data()
 
-def get_today_completed():
-    """Get completed tasks for today"""
+def get_today_meals():
+    """Get today's meals"""
     today = get_today_key()
-    return st.session_state.user_data["completion_history"].get(today, [])
+    return st.session_state.user_data["meals"].get(today, [])
 
-def get_completion_streak():
-    """Calculate current completion streak"""
+def get_today_totals():
+    """Get today's totals"""
+    meals = get_today_meals()
+    totals = {"calories": 0, "protein": 0, "carbs": 0, "fat": 0}
+    
+    for meal in meals:
+        totals["calories"] += meal["calories"]
+        totals["protein"] += meal["protein"]
+        totals["carbs"] += meal["carbs"]
+        totals["fat"] += meal["fat"]
+    
+    return totals
+
+def get_meal_streak():
+    """Get meal streak"""
     today = datetime.now()
     streak = 0
     
     for i in range(100):
         check_date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-        if check_date in st.session_state.user_data["completion_history"]:
-            if len(st.session_state.user_data["completion_history"][check_date]) > 0:
+        if check_date in st.session_state.user_data["meals"]:
+            meals = st.session_state.user_data["meals"][check_date]
+            if meals:
                 streak += 1
             else:
                 break
@@ -443,24 +338,23 @@ def claim_daily_bonus():
         add_experience(25)
         st.session_state.user_data["daily_bonus_claimed"] = True
         st.session_state.user_data["last_bonus_date"] = today
-        save_user_data()
+        save_data()
         return True
     return False
 
 # Sidebar
-st.sidebar.title("⚔️ Daily Tracker")
+st.sidebar.title("🍎 Calorie Tracker")
 
 col_save1, col_save2 = st.sidebar.columns(2)
 with col_save1:
-    if st.button("💾 Save", key="save_btn", use_container_width=True):
-        success, _ = save_user_data()
-        if success:
+    if st.button("💾 Save", use_container_width=True):
+        if save_data():
             st.session_state.user_data["last_saved"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             st.sidebar.success("✅ Saved!")
 
 with col_save2:
-    if st.button("📥 Load", key="load_btn", use_container_width=True):
-        loaded = load_user_data()
+    if st.button("📥 Load", use_container_width=True):
+        loaded = load_data()
         if loaded:
             st.session_state.user_data = loaded
             st.sidebar.success("✅ Loaded!")
@@ -471,25 +365,24 @@ st.sidebar.divider()
 # Daily bonus
 today = get_today_key()
 if st.session_state.user_data.get("last_bonus_date") != today:
-    if st.sidebar.button("🎁 Claim Daily Bonus (+25 EXP)", use_container_width=True):
+    if st.sidebar.button("🎁 Daily Bonus (+25 XP)", use_container_width=True):
         if claim_daily_bonus():
-            st.sidebar.success("🎉 +25 EXP claimed!")
+            st.sidebar.success("🎉 Bonus claimed!")
             st.rerun()
 else:
-    st.sidebar.caption("✅ Daily bonus claimed today!")
+    st.sidebar.caption("✅ Bonus claimed!")
 
 st.sidebar.divider()
 
-page = st.sidebar.radio("Navigation", ["🏠 Home", "⚔️ Quests", "📊 Stats", "🏆 Achievements", "💾 Data", "⚙️ Settings"])
+page = st.sidebar.radio("Navigation", ["🏠 Home", "🍽️ Log Meal", "📊 Analytics", "⚖️ Weight", "🏆 Achievements", "⚙️ Settings"])
 
 # Main Header
 col1, col2, col3 = st.columns([2, 2, 1])
 
 with col1:
-    rank_info = get_current_rank(st.session_state.user_data['rank_points'])
     st.markdown(f"""
     <div class='level-container'>
-        <h2>⚔️ LEVEL {st.session_state.user_data['level']}</h2>
+        <h2>🍎 LEVEL {st.session_state.user_data['level']}</h2>
         <p>Experience: {st.session_state.user_data['experience']}/{st.session_state.user_data['exp_needed']}</p>
     </div>
     """, unsafe_allow_html=True)
@@ -498,6 +391,7 @@ with col1:
     st.progress(min(progress, 1.0))
 
 with col2:
+    rank_info = get_current_rank(st.session_state.user_data['rank_points'])
     st.markdown(f"""
     <div class='rank-container'>
         <h2>{rank_info['emoji']} {rank_info['rank']}</h2>
@@ -506,349 +400,288 @@ with col2:
     """, unsafe_allow_html=True)
 
 with col3:
-    season = SEASONS[st.session_state.user_data['current_season']]
     st.markdown(f"""
-    <div class='season-container'>
-        <h4>Season {st.session_state.user_data['current_season']}</h4>
-        <p style='margin: 5px 0;'>{season['name']}</p>
-        <small>{season['start_date']} - {season['end_date']}</small>
+    <div class='goal-container'>
+        <h4>🎯 Daily Goal</h4>
+        <p style='margin: 5px 0;'>{st.session_state.user_data['daily_calorie_goal']} cal</p>
+        <small>Weight: {st.session_state.user_data['current_weight']} lbs</small>
     </div>
     """, unsafe_allow_html=True)
 
 st.divider()
 
-# Daily Motivation
+# Daily motivation
 st.markdown(f"""
 <div class='motivation-card'>
-✨ {random.choice(MOTIVATIONAL_QUOTES)} ✨
+🌟 {random.choice(NUTRITION_QUOTES)} 🌟
 </div>
 """, unsafe_allow_html=True)
 
-# PAGE: Home/Dashboard
+# PAGE: Home
 if page == "🏠 Home":
-    if len(st.session_state.user_data["daily_tasks"]) == 0:
-        col1, col2 = st.columns(2)
-        with col1:
-            st.warning("⚠️ No quests yet! Create your first quest to begin your journey!")
-        with col2:
-            if st.button("➕ Create First Quest", use_container_width=True):
-                st.switch_page("pages/quests")
-    else:
-        # Stats row
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("📊 Tasks", len(st.session_state.user_data["daily_tasks"]))
-        
-        with col2:
-            today_completed = len(get_today_completed())
-            st.metric("✅ Today", f"{today_completed}/{len(st.session_state.user_data['daily_tasks'])}")
-        
-        with col3:
-            streak = get_completion_streak()
-            st.metric("🔥 Streak", f"{streak} days")
-        
-        with col4:
-            next_rank_idx = next((i for i, r in enumerate(RANK_SYSTEM) if r["rank"] == st.session_state.user_data['rank']), 0)
-            if next_rank_idx < len(RANK_SYSTEM) - 1:
-                pts_to_next = RANK_SYSTEM[next_rank_idx + 1]["min_points"] - st.session_state.user_data['rank_points']
-                st.metric("🎯 Next Rank", f"{pts_to_next} pts")
-            else:
-                st.metric("🎯 Next Rank", "MAX ✨")
-        
-        st.divider()
-        
-        # Streak visual
-        streak = get_completion_streak()
-        if streak >= 3:
-            st.markdown(f"""
-            <div class='streak-card'>
-            🔥 AMAZING! You're on a {streak}-day streak! 🔥
-            </div>
-            """, unsafe_allow_html=True)
-        elif streak >= 1:
-            st.markdown(f"""
-            <div class='milestone-card'>
-            ⭐ Great start! {streak} day streak going! Keep it up!
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.subheader("📋 Today's Quests")
-        today_tasks = get_today_completed()
-        completion_rate = (len(today_tasks) / len(st.session_state.user_data["daily_tasks"])) * 100
-        
-        st.progress(completion_rate / 100, text=f"Progress: {completion_rate:.0f}%")
-        
-        col1, col2 = st.columns([4, 1])
-        with col1:
-            selected_category = st.selectbox("Filter by Category", ["All"] + list(CATEGORIES.keys()), key="dashboard_filter")
-        
-        for task in st.session_state.user_data["daily_tasks"]:
-            if selected_category != "All" and task.get("category") != selected_category:
-                continue
-            
-            is_completed = task["id"] in today_tasks
-            color = "task-completed" if is_completed else "task-pending"
-            status = "✅" if is_completed else "⭕"
-            exp_amount = task["exp"] * DIFFICULTY_EXP.get(task["difficulty"], 1)
-            category_icon = CATEGORIES.get(task.get("category"), "📌")
-            
-            st.markdown(f"""
-            <div class='{color}'>
-                <b>{status} {task['name']}</b> {category_icon} - {int(exp_amount)} EXP [{task['difficulty'].upper()}]
-            </div>
-            """, unsafe_allow_html=True)
-        
-        st.divider()
-        
-        # Charts
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            st.subheader("📈 Level Progress")
-            fig = go.Figure(data=[
-                go.Bar(
-                    x=["Current", "Needed"],
-                    y=[st.session_state.user_data['experience'], st.session_state.user_data['exp_needed']],
-                    marker_color=['#667eea', '#764ba2']
-                )
-            ])
-            fig.update_layout(height=300, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with col2:
-            st.subheader("🏆 Rank Progression")
-            rank_data = []
-            for rank in RANK_SYSTEM:
-                rank_data.append({
-                    "Rank": rank["rank"],
-                    "Points": rank["min_points"],
-                    "Current": st.session_state.user_data['rank_points'] >= rank["min_points"]
-                })
-            
-            df_ranks = pd.DataFrame(rank_data)
-            fig = px.bar(
-                df_ranks,
-                x="Rank",
-                y="Points",
-                color="Current",
-                color_discrete_map={True: '#FF6347', False: '#95a5a6'}
-            )
-            fig.update_layout(height=300, showlegend=False)
-            st.plotly_chart(fig, use_container_width=True)
-
-# PAGE: Quests
-elif page == "⚔️ Quests":
-    st.subheader("⚔️ Daily Quests")
-    st.write(f"**Current Date:** {datetime.now().strftime('%A, %B %d, %Y')}")
-    
-    today_completed = get_today_completed()
-    col1, col2, col3 = st.columns([2, 1, 1])
-    
-    with col1:
-        selected_category = st.selectbox("Filter by Category", ["All"] + list(CATEGORIES.keys()), key="quests_filter")
-    
-    with col2:
-        if len(st.session_state.user_data["daily_tasks"]) > 0:
-            completion_rate = (len(today_completed) / len(st.session_state.user_data["daily_tasks"])) * 100
-            st.metric("Completion", f"{completion_rate:.0f}%")
-    
-    with col3:
-        if st.button("📊 Summary"):
-            st.session_state.show_summary = not st.session_state.get("show_summary", False)
-    
-    if st.session_state.get("show_summary", False) and len(st.session_state.user_data["daily_tasks"]) > 0:
-        col1, col2, col3 = st.columns(3)
-        with col1:
-            st.info(f"**Tasks:** {len(today_completed)}")
-        with col2:
-            total_exp = sum(task["exp"] * DIFFICULTY_EXP.get(task["difficulty"], 1) 
-                           for task in st.session_state.user_data["daily_tasks"] 
-                           if task["id"] in today_completed)
-            st.info(f"**EXP:** {int(total_exp)}")
-        with col3:
-            st.info(f"**Streak:** {get_completion_streak()} 🔥")
-    
-    st.divider()
-    
-    if len(st.session_state.user_data["daily_tasks"]) == 0:
-        st.info("📝 No quests yet! Add your first quest below.")
-    else:
-        for task in st.session_state.user_data["daily_tasks"]:
-            if selected_category != "All" and task.get("category") != selected_category:
-                continue
-            
-            is_completed = task["id"] in today_completed
-            exp_amount = task["exp"] * DIFFICULTY_EXP.get(task["difficulty"], 1)
-            category_icon = CATEGORIES.get(task.get("category"), "📌")
-            
-            col1, col2, col3, col4, col5 = st.columns([3, 1, 0.8, 0.8, 0.8])
-            
-            with col1:
-                difficulty_color = DIFFICULTY_COLORS.get(task["difficulty"], "#95a5a6")
-                status_icon = "✅" if is_completed else "⭕"
-                st.markdown(f"""
-                **{status_icon} {task['name']}** {category_icon}  
-                <span style='color: {difficulty_color}; font-weight: bold;'>[{task['difficulty'].upper()}]</span> - {int(exp_amount)} EXP
-                """, unsafe_allow_html=True)
-            
-            with col2:
-                st.write(f"🎯 +{int(exp_amount)}" if not is_completed else "✨")
-            
-            with col3:
-                if not is_completed:
-                    if st.button("✅", key=f"task_{task['id']}"):
-                        leveled_up, achievements = mark_task_complete(task['id'])
-                        if leveled_up:
-                            st.balloons()
-                        if achievements:
-                            st.success(f"🏆 Achievement unlocked!")
-                        save_user_data()
-                        st.rerun()
-                else:
-                    st.write("✔️")
-            
-            with col4:
-                if st.button("❌", key=f"undo_{task['id']}"):
-                    today = get_today_key()
-                    if today in st.session_state.user_data["completion_history"]:
-                        if task["id"] in st.session_state.user_data["completion_history"][today]:
-                            st.session_state.user_data["completion_history"][today].remove(task["id"])
-                            save_user_data()
-                            st.rerun()
-            
-            with col5:
-                if st.button("🗑️", key=f"delete_{task['id']}"):
-                    st.session_state.user_data["daily_tasks"] = [
-                        t for t in st.session_state.user_data["daily_tasks"] if t["id"] != task["id"]
-                    ]
-                    save_user_data()
-                    st.rerun()
-    
-    st.divider()
-    
-    st.subheader("➕ Add New Quest")
-    with st.expander("Click to create a new quest"):
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            new_task_name = st.text_input("Quest Name", placeholder="e.g., Morning Run")
-        
-        with col2:
-            new_category = st.selectbox("Category", list(CATEGORIES.keys()), key="new_task_category")
-        
-        col3, col4 = st.columns(2)
-        
-        with col3:
-            new_difficulty = st.selectbox("Difficulty", ["common", "rare", "epic", "legendary"], key="new_task_difficulty")
-        
-        with col4:
-            new_exp = st.number_input("Base EXP", min_value=5, max_value=200, value=10, step=5)
-        
-        if st.button("✨ Add Quest", type="primary"):
-            if new_task_name:
-                new_id = max([t["id"] for t in st.session_state.user_data["daily_tasks"]], default=0) + 1
-                st.session_state.user_data["daily_tasks"].append({
-                    "id": new_id,
-                    "name": new_task_name,
-                    "difficulty": new_difficulty,
-                    "exp": new_exp,
-                    "category": new_category
-                })
-                save_user_data()
-                st.success(f"Quest '{new_task_name}' added! ⚔️")
-                st.rerun()
-
-# PAGE: Statistics
-elif page == "📊 Stats":
-    st.subheader("📊 Statistics & History")
-    
-    if len(st.session_state.user_data["completion_history"]) == 0:
-        st.info("📈 Complete some tasks to see stats!")
-    else:
-        col1, col2, col3, col4 = st.columns(4)
-        
-        with col1:
-            st.metric("📅 Days Active", len(st.session_state.user_data["completion_history"]))
-        
-        with col2:
-            st.metric("✅ Total Completed", st.session_state.user_data.get("total_tasks_completed", 0))
-        
-        with col3:
-            st.metric("⭐ Total EXP", st.session_state.user_data.get("total_exp_earned", 0))
-        
-        with col4:
-            st.metric("🔥 Best Streak", st.session_state.user_data.get("best_streak", 0))
-        
-        st.divider()
-        
-        tab1, tab2, tab3 = st.tabs(["Activity", "Tasks", "Categories"])
-        
-        with tab1:
-            today = datetime.now()
-            heatmap_data = []
-            
-            for i in range(29, -1, -1):
-                date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
-                completed = len(st.session_state.user_data["completion_history"].get(date, []))
-                heatmap_data.append({"Date": date, "Tasks": completed})
-            
-            df_heatmap = pd.DataFrame(heatmap_data)
-            fig = px.bar(df_heatmap, x="Date", y="Tasks", color="Tasks", color_continuous_scale="Viridis")
-            fig.update_layout(height=300, xaxis_tickangle=-45)
-            st.plotly_chart(fig, use_container_width=True)
-        
-        with tab2:
-            task_completion = defaultdict(int)
-            for date, task_ids in st.session_state.user_data["completion_history"].items():
-                for task_id in task_ids:
-                    task_completion[task_id] += 1
-            
-            if task_completion and len(st.session_state.user_data["daily_tasks"]) > 0:
-                stats_data = []
-                for task in st.session_state.user_data["daily_tasks"]:
-                    stats_data.append({
-                        "Quest": task["name"],
-                        "Completed": task_completion.get(task["id"], 0),
-                        "Difficulty": task["difficulty"]
-                    })
-                
-                df_stats = pd.DataFrame(stats_data).sort_values("Completed", ascending=False)
-                fig = px.bar(df_stats, x="Quest", y="Completed", color="Difficulty", color_discrete_map=DIFFICULTY_COLORS)
-                fig.update_layout(height=400)
-                st.plotly_chart(fig, use_container_width=True)
-        
-        with tab3:
-            category_completion = defaultdict(int)
-            for date, task_ids in st.session_state.user_data["completion_history"].items():
-                for task_id in task_ids:
-                    for task in st.session_state.user_data["daily_tasks"]:
-                        if task["id"] == task_id:
-                            category_completion[task.get("category", "other")] += 1
-            
-            if category_completion:
-                cat_data = [{"Category": cat, "Count": count} for cat, count in category_completion.items()]
-                df_cat = pd.DataFrame(cat_data)
-                fig = px.pie(df_cat, values="Count", names="Category")
-                st.plotly_chart(fig, use_container_width=True)
-
-# PAGE: Achievements
-elif page == "🏆 Achievements":
-    st.subheader("🏆 Achievements & Milestones")
+    today_meals = get_today_meals()
+    today_totals = get_today_totals()
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.metric("✅ Completed", st.session_state.user_data.get("total_tasks_completed", 0))
+        remaining = st.session_state.user_data["daily_calorie_goal"] - today_totals["calories"]
+        color = "🟢" if remaining >= 0 else "🔴"
+        st.metric(f"{color} Remaining", f"{max(0, remaining)} cal")
+    
+    with col2:
+        st.metric("📝 Meals", len(today_meals))
+    
+    with col3:
+        streak = get_meal_streak()
+        st.metric("📅 Streak", f"{streak} days")
+    
+    with col4:
+        st.metric("⭐ Total Logged", st.session_state.user_data["total_meals_logged"])
+    
+    st.divider()
+    
+    # Today's calories status
+    goal = st.session_state.user_data["daily_calorie_goal"]
+    consumed = today_totals["calories"]
+    
+    if consumed == 0:
+        st.info("📝 No meals logged yet. Start by logging a meal!")
+    elif consumed <= goal:
+        status = "✅ ON TRACK!"
+        st.markdown(f"""
+        <div class='on-track'>
+            <b>{status}</b> You're doing great! {goal - consumed} calories remaining.
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        excess = consumed - goal
+        st.markdown(f"""
+        <div class='over-calories'>
+            <b>⚠️ OVER GOAL</b> You've consumed {excess} extra calories. Time to get moving!
+        </div>
+        """, unsafe_allow_html=True)
+    
+    st.divider()
+    
+    # Macros
+    st.subheader("💪 Macronutrients")
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        protein_percent = (today_totals["protein"] / st.session_state.user_data["daily_protein_goal"]) * 100
+        st.markdown(f"""
+        <div class='macro-card'>
+            <h3>🥚 Protein</h3>
+            <h2>{today_totals["protein"]}g</h2>
+            <p>Goal: {st.session_state.user_data["daily_protein_goal"]}g ({protein_percent:.0f}%)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.progress(min(protein_percent / 100, 1.0))
+    
+    with col2:
+        carbs_percent = (today_totals["carbs"] / st.session_state.user_data["daily_carbs_goal"]) * 100
+        st.markdown(f"""
+        <div class='macro-card'>
+            <h3>🍞 Carbs</h3>
+            <h2>{today_totals["carbs"]}g</h2>
+            <p>Goal: {st.session_state.user_data["daily_carbs_goal"]}g ({carbs_percent:.0f}%)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.progress(min(carbs_percent / 100, 1.0))
+    
+    with col3:
+        fat_percent = (today_totals["fat"] / st.session_state.user_data["daily_fat_goal"]) * 100
+        st.markdown(f"""
+        <div class='macro-card'>
+            <h3>🥑 Fat</h3>
+            <h2>{today_totals["fat"]}g</h2>
+            <p>Goal: {st.session_state.user_data["daily_fat_goal"]}g ({fat_percent:.0f}%)</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.progress(min(fat_percent / 100, 1.0))
+    
+    st.divider()
+    
+    # Today's meals
+    st.subheader("🍽️ Today's Meals")
+    if today_meals:
+        for i, meal in enumerate(today_meals):
+            st.markdown(f"""
+            <div class='food-item'>
+                <b>{meal['name']}</b> ({meal['time']})
+                <br>
+                {meal['calories']} cal | P:{meal['protein']}g | C:{meal['carbs']}g | F:{meal['fat']}g
+            </div>
+            """, unsafe_allow_html=True)
+    else:
+        st.info("No meals logged yet. Log your first meal to start!")
+
+# PAGE: Log Meal
+elif page == "🍽️ Log Meal":
+    st.subheader("🍽️ Log a Meal")
+    
+    tab1, tab2 = st.tabs(["Quick Select", "Custom Entry"])
+    
+    with tab1:
+        st.write("### Select from common foods")
+        
+        category = st.selectbox("Food Category", list(COMMON_FOODS.keys()))
+        foods = COMMON_FOODS[category]
+        
+        food_option = st.selectbox("Food", [f"{food['name']} ({food['calories']} cal)" for food in foods])
+        
+        selected_idx = [f"{food['name']} ({food['calories']} cal)" for food in foods].index(food_option)
+        selected_food = foods[selected_idx]
+        
+        if st.button("✅ Log This Food", type="primary", key="log_quick"):
+            log_meal(selected_food["name"], selected_food["calories"], selected_food["protein"], selected_food["carbs"], selected_food["fat"])
+            st.success(f"✅ Logged {selected_food['name']}!")
+            st.balloons()
+            st.rerun()
+    
+    with tab2:
+        st.write("### Enter custom food")
+        
+        col1, col2 = st.columns(2)
+        with col1:
+            food_name = st.text_input("Food Name")
+            calories = st.number_input("Calories", min_value=0, max_value=5000, value=100)
+        
+        with col2:
+            protein = st.number_input("Protein (g)", min_value=0, max_value=500, value=10)
+            carbs = st.number_input("Carbs (g)", min_value=0, max_value=500, value=20)
+        
+        fat = st.number_input("Fat (g)", min_value=0, max_value=200, value=5)
+        
+        if st.button("✅ Log Custom Food", type="primary", key="log_custom"):
+            if food_name:
+                log_meal(food_name, calories, protein, carbs, fat)
+                st.success(f"✅ Logged {food_name}!")
+                st.balloons()
+                st.rerun()
+            else:
+                st.error("Please enter a food name")
+
+# PAGE: Analytics
+elif page == "📊 Analytics":
+    st.subheader("📊 Analytics & Trends")
+    
+    if not st.session_state.user_data["meals"]:
+        st.info("Log some meals to see analytics!")
+    else:
+        col1, col2, col3, col4 = st.columns(4)
+        
+        with col1:
+            st.metric("📝 Total Meals", st.session_state.user_data["total_meals_logged"])
+        
+        with col2:
+            days_logged = len(st.session_state.user_data["meals"])
+            st.metric("📅 Days Logged", days_logged)
+        
+        with col3:
+            streak = get_meal_streak()
+            st.metric("🔥 Streak", f"{streak} days")
+        
+        with col4:
+            st.metric("🏆 Best Streak", st.session_state.user_data["best_streak"])
+        
+        st.divider()
+        
+        # Simple table of last 7 days
+        st.subheader("📅 Last 7 Days Summary")
+        
+        summary_data = []
+        today = datetime.now()
+        
+        for i in range(6, -1, -1):
+            date = (today - timedelta(days=i)).strftime("%Y-%m-%d")
+            date_display = (today - timedelta(days=i)).strftime("%a, %b %d")
+            meals = st.session_state.user_data["meals"].get(date, [])
+            
+            total_cal = sum(m["calories"] for m in meals)
+            total_protein = sum(m["protein"] for m in meals)
+            total_carbs = sum(m["carbs"] for m in meals)
+            total_fat = sum(m["fat"] for m in meals)
+            
+            summary_data.append({
+                "Date": date_display,
+                "Calories": total_cal,
+                "Protein": total_protein,
+                "Carbs": total_carbs,
+                "Fat": total_fat,
+                "Meals": len(meals)
+            })
+        
+        df = pd.DataFrame(summary_data)
+        st.dataframe(df, use_container_width=True)
+
+# PAGE: Weight
+elif page == "⚖️ Weight":
+    st.subheader("⚖️ Weight Tracking")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("📊 Current Weight", f"{st.session_state.user_data['current_weight']} lbs")
+    
+    with col2:
+        st.metric("🎯 Target Weight", f"{st.session_state.user_data['target_weight']} lbs")
+    
+    with col3:
+        difference = st.session_state.user_data["current_weight"] - st.session_state.user_data["target_weight"]
+        st.metric("📈 To Go", f"{difference} lbs")
+    
+    st.divider()
+    
+    st.write("### Update Weight")
+    col1, col2 = st.columns(2)
+    
+    with col1:
+        new_weight = st.number_input("Current Weight (lbs)", value=st.session_state.user_data["current_weight"], min_value=50, max_value=500)
+    
+    with col2:
+        target_weight = st.number_input("Target Weight (lbs)", value=st.session_state.user_data["target_weight"], min_value=50, max_value=500)
+    
+    if st.button("💾 Save Weight", type="primary"):
+        today = get_today_key()
+        st.session_state.user_data["current_weight"] = new_weight
+        st.session_state.user_data["target_weight"] = target_weight
+        st.session_state.user_data["weight_log"][today] = new_weight
+        save_data()
+        st.success("✅ Weight saved!")
+        st.rerun()
+    
+    st.divider()
+    
+    # Weight history table
+    if st.session_state.user_data["weight_log"]:
+        st.subheader("📉 Weight History")
+        
+        weight_data = []
+        for date in sorted(st.session_state.user_data["weight_log"].keys(), reverse=True)[:10]:
+            weight_data.append({
+                "Date": date,
+                "Weight": st.session_state.user_data["weight_log"][date]
+            })
+        
+        df_weight = pd.DataFrame(weight_data)
+        st.dataframe(df_weight, use_container_width=True)
+
+# PAGE: Achievements
+elif page == "🏆 Achievements":
+    st.subheader("🏆 Achievements")
+    
+    col1, col2, col3 = st.columns(3)
+    
+    with col1:
+        st.metric("📝 Meals Logged", st.session_state.user_data["total_meals_logged"])
     
     with col2:
         st.metric("🏅 Achievements", f"{len(st.session_state.user_data['achievements'])}/{len(ACHIEVEMENTS)}")
     
     with col3:
-        st.metric("🔥 Streak", f"{get_completion_streak()} days")
-    
-    with col4:
-        st.metric("⭐ Level", st.session_state.user_data['level'])
+        st.metric("📅 Streak", f"{get_meal_streak()} days")
     
     st.divider()
     
@@ -863,152 +696,83 @@ elif page == "🏆 Achievements":
                     st.markdown(f"<div class='achievement-badge'>{ach['emoji']} {ach['name']}</div>", unsafe_allow_html=True)
                     st.caption(ach["description"])
         else:
-            st.info("🚀 Start completing tasks!")
+            st.info("🚀 Start logging meals!")
     
     with col2:
         st.write("### 🎯 Next Achievements")
-        next_count = 0
+        count = 0
         for ach_id, ach in ACHIEVEMENTS.items():
-            if ach_id not in st.session_state.user_data["achievements"] and next_count < 5:
+            if ach_id not in st.session_state.user_data["achievements"] and count < 5:
                 st.write(f"**{ach['emoji']} {ach['name']}**")
                 st.caption(ach["description"])
-                next_count += 1
-    
-    st.divider()
-    
-    st.write("### 📈 Progress")
-    total_tasks = st.session_state.user_data.get("total_tasks_completed", 0)
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.progress(min(total_tasks / 100, 1.0), text=f"{total_tasks}/100")
-        st.caption("Unstoppable")
-    
-    with col2:
-        streak = get_completion_streak()
-        st.progress(min(streak / 30, 1.0), text=f"{streak}/30")
-        st.caption("Month Streak")
-    
-    with col3:
-        st.progress(st.session_state.user_data['rank_points'] / 5000, text=f"{st.session_state.user_data['rank_points']}/5000")
-        st.caption("Legend Rank")
-
-# PAGE: Data Manager
-elif page == "💾 Data":
-    st.subheader("💾 Data Management")
-    
-    tab1, tab2 = st.tabs(["Save/Load", "Download/Upload"])
-    
-    with tab1:
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("💾 Save Now", use_container_width=True):
-                save_user_data()
-                st.session_state.user_data["last_saved"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                st.success("✅ Saved!")
-        
-        with col2:
-            if st.button("📥 Load Now", use_container_width=True):
-                loaded = load_user_data()
-                if loaded:
-                    st.session_state.user_data = loaded
-                    st.success("✅ Loaded!")
-                    st.rerun()
-        
-        if st.session_state.user_data.get("last_saved"):
-            st.caption(f"Last saved: {st.session_state.user_data['last_saved']}")
-    
-    with tab2:
-        col1, col2 = st.columns(2)
-        with col1:
-            json_data = json.dumps(st.session_state.user_data, indent=4)
-            st.download_button("📥 Download JSON", json_data, file_name=f"tracker_{datetime.now().strftime('%Y%m%d')}.json", mime="application/json")
-        
-        with col2:
-            uploaded = st.file_uploader("📤 Upload JSON", type="json")
-            if uploaded:
-                try:
-                    uploaded_data = json.load(uploaded)
-                    if st.button("Load Uploaded", key="load_upload"):
-                        st.session_state.user_data = uploaded_data
-                        save_user_data()
-                        st.success("✅ Loaded!")
-                        st.rerun()
-                except:
-                    st.error("Invalid JSON")
+                count += 1
 
 # PAGE: Settings
 elif page == "⚙️ Settings":
     st.subheader("⚙️ Settings")
     
-    tab1, tab2 = st.tabs(["Profile", "Advanced"])
+    tab1, tab2 = st.tabs(["Goals", "Advanced"])
     
     with tab1:
+        st.write("### Nutrition Goals")
+        
         col1, col2 = st.columns(2)
+        
         with col1:
-            st.write("### Profile")
-            username = st.text_input("Username", "Adventurer")
-            if st.session_state.user_data.get("last_level_up"):
-                st.caption(f"Last level up: {st.session_state.user_data['last_level_up']}")
+            calorie_goal = st.number_input("Daily Calorie Goal", value=st.session_state.user_data["daily_calorie_goal"], min_value=500, max_value=5000, step=100)
+            protein_goal = st.number_input("Daily Protein Goal (g)", value=st.session_state.user_data["daily_protein_goal"], min_value=20, max_value=500, step=5)
         
         with col2:
-            st.write("### Stats")
-            col_a, col_b = st.columns(2)
-            with col_a:
-                st.metric("Total EXP", st.session_state.user_data.get("total_exp_earned", 0))
-            with col_b:
-                st.metric("Days Active", len(st.session_state.user_data["completion_history"]))
+            carbs_goal = st.number_input("Daily Carbs Goal (g)", value=st.session_state.user_data["daily_carbs_goal"], min_value=50, max_value=500, step=10)
+            fat_goal = st.number_input("Daily Fat Goal (g)", value=st.session_state.user_data["daily_fat_goal"], min_value=20, max_value=200, step=5)
+        
+        if st.button("💾 Save Goals", type="primary"):
+            st.session_state.user_data["daily_calorie_goal"] = calorie_goal
+            st.session_state.user_data["daily_protein_goal"] = protein_goal
+            st.session_state.user_data["daily_carbs_goal"] = carbs_goal
+            st.session_state.user_data["daily_fat_goal"] = fat_goal
+            save_data()
+            st.success("✅ Goals saved!")
     
     with tab2:
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("🔄 Reset Progress", type="secondary"):
-                if st.checkbox("Confirm reset"):
-                    st.session_state.user_data = {
-                        "current_season": 1,
-                        "level": 1,
-                        "experience": 0,
-                        "exp_needed": 100,
-                        "rank": "BRONZE",
-                        "rank_points": 0,
-                        "daily_tasks": [],
-                        "completion_history": {},
-                        "achievements": [],
-                        "last_level_up": None,
-                        "last_saved": None,
-                        "total_tasks_completed": 0,
-                        "total_exp_earned": 0,
-                        "best_streak": 0,
-                        "setup_complete": False
-                    }
-                    save_user_data()
-                    st.rerun()
-        
-        with col2:
-            new_season = st.selectbox("Season", list(SEASONS.keys()))
-            if st.button("🎮 New Season", type="secondary"):
-                st.session_state.user_data["current_season"] = new_season
-                st.session_state.user_data["level"] = 1
-                st.session_state.user_data["experience"] = 0
-                st.session_state.user_data["rank_points"] = 0
-                st.session_state.user_data["completion_history"] = {}
-                save_user_data()
+        if st.button("🔄 Reset All Data", type="secondary"):
+            if st.checkbox("I'm sure"):
+                st.session_state.user_data = {
+                    "username": "Nutritionist",
+                    "level": 1,
+                    "experience": 0,
+                    "exp_needed": 100,
+                    "rank": "BEGINNER",
+                    "rank_points": 0,
+                    "daily_calorie_goal": 2000,
+                    "daily_protein_goal": 150,
+                    "daily_carbs_goal": 225,
+                    "daily_fat_goal": 65,
+                    "target_weight": 170,
+                    "current_weight": 180,
+                    "meals": {},
+                    "weight_log": {},
+                    "achievements": [],
+                    "last_saved": None,
+                    "total_meals_logged": 0,
+                    "best_streak": 0,
+                }
+                save_data()
                 st.rerun()
         
         st.divider()
         st.info("""
-        **Daily Tracker v5.0** 🚀
+        **Calorie Tracker v1.0** 🍎
         
         ✨ Features:
-        - 🎮 8-Tier Ranking System
-        - 🏆 10+ Achievements
-        - 📊 Advanced Statistics
-        - 💾 Persistent Data Storage
-        - 🎁 Daily Bonus Rewards
-        - 📈 Progress Tracking
-        - 🔥 Streak Counter
-        - 💪 Motivation & Inspiration
+        - 🎮 Leveling System
+        - 📝 Meal Logging
+        - 💪 Macro Tracking
+        - ⚖️ Weight Tracking
+        - 🏆 Achievements
+        - 💾 Auto-Save
+        - 🎁 Daily Bonus
         """)
 
 st.sidebar.divider()
-st.sidebar.write("**Made with ⚔️ for Daily Champions**")
+st.sidebar.write("**Made with 💚 for Nutrition Goals**")
